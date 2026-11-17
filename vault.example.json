@@ -1,0 +1,13 @@
+{
+  "_comment": "Optional: the plugin settings in LM Studio come first. Copy to vault.json (gitignored) and adjust; every key is optional.",
+  "vaultPath": "/absolute/path/to/Obsidian/vault",
+  "markerTokens": ["pve-sync", "opnsense-sync"],
+  "userSectionHeadings": ["Notes", "Runbook"],
+  "staleAfterDays": 7,
+  "maxEntities": 3,
+  "maxHopNotes": 3,
+  "maxFuzzyNotes": 2,
+  "snippetMaxChars": 1400,
+  "totalMaxChars": 6000,
+  "permanentFolder": "Zettels"
+}

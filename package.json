@@ -1,0 +1,38 @@
+{
+  "name": "lm-recall",
+  "version": "0.0.5",
+  "description": "LM Studio plugin that adds relevant notes from your markdown / Zettelkasten vault to each chat message.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chaoschaser/lm-recall.git"
+  },
+  "homepage": "https://github.com/chaoschaser/lm-recall#readme",
+  "bugs": {
+    "url": "https://github.com/chaoschaser/lm-recall/issues"
+  },
+  "keywords": [
+    "lm-studio",
+    "lmstudio-plugin",
+    "obsidian",
+    "zettelkasten",
+    "local-llm",
+    "rag",
+    "markdown"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "tsc && node --enable-source-maps dist/index.js",
+    "build": "tsc",
+    "test": "tsc && node --test test/recall.test.js"
+  },
+  "author": "jchase",
+  "license": "MIT",
+  "dependencies": {
+    "@lmstudio/sdk": "2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.2"
+  }
+}
