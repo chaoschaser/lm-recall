@@ -298,6 +298,10 @@ Builds the plugin, then runs the tests in `test/recall.test.js` against the samp
 
 Inspired by [kiro-recall](https://github.com/mikeartee/kiro-recall) by Mike Artee, which introduced automatically adding relevant vault notes to an AI session. lm-recall is an independent implementation for LM Studio's plugin system. It shares the idea, not the code.
 
+## AI Usage
+
+Claude. local models and Lumo were used in the creation of this project, this was to help assist in learning typescript as well as creating a tool for my own personal use-case that may have application to others interested in the same sort of system. All code has been tested by hand for issues and bugs and to ensure the system works to what I specced and expect.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
