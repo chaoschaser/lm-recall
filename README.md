@@ -8,7 +8,17 @@ A sister project to [kiro-recall](https://github.com/mikeartee/kiro-recall) by M
 
 ## Quick start
 
-You need LM Studio with the `lms` command-line tool, and Node.js.
+### Install from the LM Studio Hub
+
+1. Open [lm-recall on the LM Studio Hub](https://lmstudio.ai/chaoschaser/lm-recall) and click **Run in LM Studio**.
+2. In LM Studio, open the plugin's settings and set **Vault folder** to the folder to read, for example `~/Obsidian/MyVault`.
+3. Open a chat and ask about something in your vault. A status line in the chat names the notes that were added ("Added 3 notes: Dive certification, Reef survey project, ct-101").
+
+No terminal or Node.js needed.
+
+### Run from source
+
+For changing the code. You need LM Studio with the `lms` command-line tool, and Node.js.
 
 ```bash
 git clone https://github.com/chaoschaser/lm-recall.git
@@ -17,9 +27,7 @@ npm install
 lms dev
 ```
 
-`lms dev` runs the plugin in LM Studio while the terminal stays open. In LM Studio, open the plugin's settings and set **Vault folder** to the folder to read, for example `~/Obsidian/MyVault`. (Prefer a file? See [Configuration](#configuration).)
-
-Open a chat in LM Studio and ask about something in your vault. A status line in the chat names the notes that were added ("Added 3 notes: Dive certification, Reef survey project, ct-101"); the `lms dev` terminal prints the details.
+`lms dev` runs the plugin in LM Studio while the terminal stays open, and prints which notes were added to each message. Set **Vault folder** in the plugin's settings as above. (Prefer a file? See [Configuration](#configuration).)
 
 ## Using it in chat
 
