@@ -26,7 +26,7 @@
     "build": "tsc",
     "test": "tsc && node --test test/recall.test.js"
   },
-  "author": "jchase",
+  "author": "chaoschaser",
   "license": "MIT",
   "dependencies": {
     "@lmstudio/sdk": "2.1.0"
