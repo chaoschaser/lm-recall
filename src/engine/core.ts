@@ -28,7 +28,7 @@ function unquote(s: string): string {
  * commas inside quotes or inside [[wikilinks]] / nested brackets are
  * kept. `a, "b, c", [[x|y]]` -> ["a", "b, c", "[[x|y]]"].
  */
-export function splitFlowList(inner: string): string[] {
+function splitFlowList(inner: string): string[] {
   const items: string[] = [];
   let buf = "";
   let quote: string | null = null;
@@ -142,15 +142,13 @@ export interface VaultFile {
 }
 
 export interface WalkOptions {
-  /** Glob-ish substring filters; file is skipped if any matches (case-insensitive). */
+  /** Substring filters on the vault-relative path; file is skipped if any matches (case-insensitive). */
   excludeNamePatterns?: string[];
-  excludeDirs?: string[];
   maxFileBytes: number;
 }
 
-export const DEFAULT_EXCLUDE_DIRS = [
-  ".obsidian", ".git", ".trash", "node_modules",
-];
+/** Skipped folders besides dot-folders (.obsidian, .git, .trash, ...), which walk() always skips. */
+const EXCLUDE_DIRS = ["node_modules"];
 
 export async function walkVault(
   vaultPath: string,
@@ -200,8 +198,7 @@ async function walk(
     return;
   }
   for (const entry of entries) {
-    const exclDirs = opts.excludeDirs ?? DEFAULT_EXCLUDE_DIRS;
-    if (entry.name.startsWith(".") || exclDirs.includes(entry.name)) continue;
+    if (entry.name.startsWith(".") || EXCLUDE_DIRS.includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       await walk(full, base, out, opts, depth + 1);

@@ -13,9 +13,9 @@ import type { Frontmatter } from "./core";
  * Key names checked against pve_sync.py (SCHEMA 7, FM_KEYS) and
  * opnsense_sync.py (fw schema 2, FW_KEYS / NET_KEYS).
  */
-export const COMMON_FACT_KEYS = ["summary", "status"];
+const COMMON_FACT_KEYS = ["summary", "status"];
 
-export const FACT_KEYS_BY_NAMESPACE: Record<string, string[]> = {
+const FACT_KEYS_BY_NAMESPACE: Record<string, string[]> = {
   vm: ["type", "node", "onboot", "cores", "memory_mb", "ips", "agent",
        "backup", "last_backup", "snapshots", "storage", "bridges", "vlans",
        "passthrough", "disks", "pve_tags"],
@@ -34,7 +34,7 @@ export const FACT_KEYS_BY_NAMESPACE: Record<string, string[]> = {
 
 /** Never shown as facts: identity/plumbing keys, or shown elsewhere
  * (connects_to becomes "Links to / Linked from" lines). */
-export const HIDDEN_KEYS = new Set([
+const HIDDEN_KEYS = new Set([
   "id", "aliases", "alias", "title", "connects_to", "managed_by", "sync_schema",
   "cssclasses", "cssclass", "publish", "position",
 ]);

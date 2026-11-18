@@ -75,7 +75,7 @@ const fileConfig = readFileConfig();
 export const RUNTIME_CONFIG: HomelabConfig = {
   ...HOMELAB_DEFAULTS,
   ...fileConfig,
-  // vaultPath precedence: vault.json -> env var -> compiled default.
+  // vaultPath precedence: vault.json -> env var -> compiled default ("").
   // (Explicit key placed after the spreads so it wins.)
   vaultPath:
     fileConfig.vaultPath

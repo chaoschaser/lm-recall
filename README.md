@@ -103,7 +103,7 @@ summary: Open Water Diver; renewal needs a refresher dive.
 
 I hold it to back the [[202611101030 Reef survey project|reef survey project]].
 Weak areas last time: the ascent ([[202611120915 safety stop procedure]])
-and network policies.
+and navigation.
 ```
 
 Saved as `202611171254 Dive certification.md`: the timestamp is the note's id, the rest is its title. `202611171254-dive-certification.md`, `202611171254_dive.md` and plain `202611171254.md` (with the title in the `#` heading) work too.
@@ -300,7 +300,11 @@ Builds the plugin, then runs the tests in `test/recall.test.js` against the samp
 - Notes already in a chat are recognised from their header lines. If you edit an earlier message and remove a header, that note counts as not added.
 - A short or common alias (`db`, `lan`) can match messages it wasn't meant for.
 - Links are followed one step only. Ask about a linked note directly to go further.
-- The whole vault is re-read on every message where notes are added. Very large vaults may feel slow.
+- The whole vault is re-read on every message (except ones with `@novault`), and again each time the model saves or promotes a note. Very large vaults may feel slow.     
+- Files over 512 KB are skipped without any message
+- Anything nested more than 8 folders deep is ignored
+- Folders and files starting with a . are ignored
+- Anything with 0 - meta/changelog in its path are never added to context
 
 ## Credits
 

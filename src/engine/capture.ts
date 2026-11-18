@@ -23,11 +23,11 @@
 import { promises as fs } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { extractWikiLinks, walkVault, type VaultFile } from "./core";
-import { findNote, noteStem, noteTitle, type HomelabConfig } from "./homelab";
+import { findNote, stemOf, titleOf, type HomelabConfig } from "./homelab";
 
 export const INBOX_FOLDER = "00 - Inbox";
-export const MANAGED_BY = "lm-recall";
-export const NONE_IDENTIFIED = "(none identified)";
+const MANAGED_BY = "lm-recall";
+const NONE_IDENTIFIED = "(none identified)";
 
 /** What a tool call hands back to the model. */
 export interface CaptureResult {
@@ -36,8 +36,6 @@ export interface CaptureResult {
   message: string;
   /** Vault-relative path of the note written (ok only). */
   relPath?: string;
-  /** The note's full text: written (ok) or, on a failed write, returned instead. */
-  content?: string;
 }
 
 /* ---------------- small helpers ---------------- */
@@ -45,7 +43,7 @@ export interface CaptureResult {
 const pad = (n: number): string => String(n).padStart(2, "0");
 
 /** YYYYMMDDHHmm in local time: the zettel id. */
-export function timestampId(d: Date): string {
+function timestampId(d: Date): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
@@ -116,7 +114,7 @@ function resolveLinks(refs: string[], files: VaultFile[], exclude: Set<VaultFile
     const f = findNote(ref, files);
     if (!f) unknown.push(ref);
     else if (!exclude.has(f)) {
-      const link = `[[${noteStem(f)}]]`;
+      const link = `[[${stemOf(f)}]]`;
       if (!links.includes(link)) links.push(link);
     }
   }
@@ -129,7 +127,6 @@ const VAULT_ERROR =
 function failedWrite(content: string): CaptureResult {
   return {
     ok: false,
-    content,
     message:
       "Couldn't save the note to the vault. Show the user the full note below so nothing is lost, " +
       "and tell them it was not saved:\n\n" + content,
@@ -172,7 +169,7 @@ async function createFile(vaultPath: string, relPath: string, content: string): 
   }
 }
 
-export const TRASH_FOLDER = ".trash";
+const TRASH_FOLDER = ".trash";
 
 /**
  * Move a note into the vault's .trash/ folder (where Obsidian's own delete
@@ -211,7 +208,7 @@ async function moveToTrash(vaultPath: string, relPath: string): Promise<string> 
 
 /* ---------------- recall: capture into the inbox ---------------- */
 
-export function inboxNoteText(p: {
+function inboxNoteText(p: {
   title: string; date: string; project: string; whatHappened: string; whyItMatters: string; links: string[];
 }): string {
   const parts = [
@@ -259,7 +256,7 @@ export async function captureNote(
   const content = inboxNoteText({
     title, date: isoDate(now), project: str(params.project), whatHappened, whyItMatters, links,
   });
-  if (!files) return { ok: false, content, message: `${VAULT_ERROR}\n\nThe note, so nothing is lost:\n\n${content}` };
+  if (!files) return { ok: false, message: `${VAULT_ERROR}\n\nThe note, so nothing is lost:\n\n${content}` };
 
   let outcome: CreateOutcome;
   try {
@@ -270,7 +267,7 @@ export async function captureNote(
   }
   if (outcome === "exists") {
     return {
-      ok: false, content,
+      ok: false,
       message: `Not saved: a note named "${basename(relPath)}" is already in the inbox, and lm-recall never overwrites notes. ` +
         "Ask the user for a different title.",
     };
@@ -278,7 +275,7 @@ export async function captureNote(
   const skipped = unknown.length
     ? ` These links were left out because no such note exists: ${unknown.join(", ")}.`
     : "";
-  return { ok: true, relPath, content, message: `Saved to ${relPath}.${skipped}` };
+  return { ok: true, relPath, message: `Saved to ${relPath}.${skipped}` };
 }
 
 /* ---------------- promote: inbox note -> permanent zettel ---------------- */
@@ -338,18 +335,18 @@ function findInboxNote(ref: string, files: VaultFile[]): { note?: VaultFile; err
   const inbox = files.filter((f) => f.relPath.startsWith(`${INBOX_FOLDER}/`));
   const want = ref.replace(/\.md$/i, "").replace(/^\[\[|\]\]$/g, "").trim().toLowerCase();
   const matches = inbox.filter((f) =>
-    noteStem(f).toLowerCase() === want ||
-    noteTitle(f).toLowerCase() === want ||
-    noteStem(f).toLowerCase().startsWith(`${want} `)); // the id alone
-  const anywhere = findNote(ref, files);
+    stemOf(f).toLowerCase() === want ||
+    titleOf(f).toLowerCase() === want ||
+    stemOf(f).toLowerCase().startsWith(`${want} `)); // the id alone
   if (!matches.length) {
+    const anywhere = findNote(ref, files);
     if (anywhere && !inbox.includes(anywhere)) {
       return { error: `"${ref}" is not an inbox note. Only notes saved with recall (in ${INBOX_FOLDER}) can be promoted.` };
     }
     return { error: `No inbox note called "${ref}" was found.` };
   }
   if (matches.length > 1) {
-    return { error: `More than one inbox note matches "${ref}": ${matches.map(noteStem).join("; ")}. Ask the user which one.` };
+    return { error: `More than one inbox note matches "${ref}": ${matches.map(stemOf).join("; ")}. Ask the user which one.` };
   }
   return { note: matches[0] };
 }
@@ -377,13 +374,13 @@ export async function promoteNote(
   const { note, error } = findInboxNote(ref, files);
   if (!note) return { ok: false, message: `Nothing was promoted: ${error}` };
   if (note.fm.managed_by !== MANAGED_BY) {
-    return { ok: false, message: `Nothing was promoted: "${noteStem(note)}" was not created by lm-recall, so lm-recall won't touch it.` };
+    return { ok: false, message: `Nothing was promoted: "${stemOf(note)}" was not created by lm-recall, so lm-recall won't touch it.` };
   }
   if (note.fm.promoted_to !== undefined) { // marked by lm-recall before inbox notes moved to .trash
-    return { ok: false, message: `Nothing was promoted: "${noteStem(note)}" was already promoted to ${String(note.fm.promoted_to)}.` };
+    return { ok: false, message: `Nothing was promoted: "${stemOf(note)}" was already promoted to ${String(note.fm.promoted_to)}.` };
   }
 
-  const title = cleanTitle(params.title) || cleanTitle(noteTitle(note));
+  const title = cleanTitle(params.title) || cleanTitle(titleOf(note));
   const idea = str(params.idea) || section(note.body, "What happened");
   const whyItMatters = str(params.why_it_matters) || section(note.body, "Why it matters");
   if (!title || !idea || !whyItMatters) {
@@ -409,7 +406,7 @@ export async function promoteNote(
   }
   if (outcome === "exists") {
     return {
-      ok: false, content,
+      ok: false,
       message: `Not promoted: a note named "${stem}.md" already exists in ${folder}, and lm-recall never overwrites notes. Ask the user for a different title.`,
     };
   }
@@ -425,5 +422,5 @@ export async function promoteNote(
   const inbox = moved
     ? ` The inbox note was moved to the vault's ${TRASH_FOLDER} folder (recoverable from there).`
     : " The inbox note could not be moved to .trash and is still in the inbox; the user can delete it in Obsidian.";
-  return { ok: true, relPath, content, message: `Promoted to ${relPath}.${inbox}${skipped}` };
+  return { ok: true, relPath, message: `Promoted to ${relPath}.${inbox}${skipped}` };
 }

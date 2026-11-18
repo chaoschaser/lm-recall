@@ -28,7 +28,7 @@ export interface PluginSettings {
   totalMaxChars?: number;
 }
 
-export const NUMERIC_SETTINGS = ["maxEntities", "maxHopNotes", "maxFuzzyNotes", "totalMaxChars"] as const;
+const NUMERIC_SETTINGS = ["maxEntities", "maxHopNotes", "maxFuzzyNotes", "totalMaxChars"] as const;
 
 /** "~" and "~/..." mean the home folder, as typed into a settings field. */
 function expandHome(p: string): string {

@@ -19,7 +19,7 @@ export interface HomelabConfig {
 }
 
 export const HOMELAB_DEFAULTS: HomelabConfig = {
-  vaultPath: process.env.LM_RECALL_VAULT ?? "",
+  vaultPath: "", // config.ts layers vault.json and LM_RECALL_VAULT over this
   markerTokens: ["pve-sync", "opnsense-sync"],
   userSectionHeadings: ["Notes", "Runbook"],
   staleAfterDays: 7,
@@ -125,7 +125,8 @@ function fmList(fm: Frontmatter, key: string): string[] {
   if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
   return [];
 }
-function stemOf(file: VaultFile): string {
+/** Filename without .md: the form a [[link]] to this note uses. */
+export function stemOf(file: VaultFile): string {
   return file.relPath.split("/").pop()!.replace(/\.md$/i, "");
 }
 /** The zettel id from the filename's timestamp prefix, or "". */
@@ -136,7 +137,8 @@ function h1Of(file: VaultFile): string {
   const h = file.body.match(/^#\s+(.+)$/m);
   return h ? h[1].trim() : "";
 }
-function titleOf(file: VaultFile): string {
+/** The note's title as lm-recall shows it. */
+export function titleOf(file: VaultFile): string {
   return h1Of(file) || fmStr(file.fm, "title") || fmStr(file.fm, "name") ||
     stemOf(file).replace(ZETTEL_ID_PREFIX, "") || fmStr(file.fm, "id") || stemOf(file);
 }
@@ -242,16 +244,6 @@ export function findNote(raw: string, files: VaultFile[]): VaultFile | undefined
   return want ? files.find((f) => titleOf(f).toLowerCase() === want) : undefined;
 }
 
-/** Filename without .md: the form a [[link]] to this note uses. */
-export function noteStem(file: VaultFile): string {
-  return stemOf(file);
-}
-
-/** The note's title as lm-recall shows it. */
-export function noteTitle(file: VaultFile): string {
-  return titleOf(file);
-}
-
 function resolveRef(raw: string, files: VaultFile[], self?: VaultFile): VaultFile | undefined {
   return files.find((f) => f !== self && refMatchesFile(raw, f));
 }
@@ -307,7 +299,7 @@ function makeLinkIndex(cfg: HomelabConfig): LinkIndex {
 }
 
 /** Notes that list this one in their `connects_to` (guest data flow). */
-export function findDependents(entity: VaultFile, files: VaultFile[]): VaultFile[] {
+function findDependents(entity: VaultFile, files: VaultFile[]): VaultFile[] {
   return files.filter(
     (f) =>
       f !== entity &&
@@ -424,7 +416,7 @@ export function collectWarnings(file: VaultFile, cfg: HomelabConfig): string[] {
  * Every other note: plain links, from connects_to and body [[links]]. */
 const MAX_RELATION_NAMES = 10;
 
-export function relationLines(entity: VaultFile, files: VaultFile[], links: LinkIndex): string[] {
+function relationLines(entity: VaultFile, files: VaultFile[], links: LinkIndex): string[] {
   const nm = (f: VaultFile) => fmStr(f.fm, "name") || titleOf(f);
   const list = (fs: VaultFile[]) => {
     const names = [...new Set(fs.map(nm))];
@@ -462,7 +454,7 @@ export function relationLines(entity: VaultFile, files: VaultFile[], links: Link
  *   2. body [[links]]       (links written in context)
  *   3. backlinks            (notes that link here, either way)
  *   4. routes_for, bridges, vlans  (syncer infrastructure links) */
-export function expandHops(
+function expandHops(
   sources: VaultFile[],
   files: VaultFile[],
   taken: Set<VaultFile>,
@@ -546,7 +538,7 @@ function singular(term: string): string {
   return term;
 }
 
-export function scoreFuzzy(
+function scoreFuzzy(
   message: string,
   files: VaultFile[],
   taken: Set<VaultFile>,
@@ -589,11 +581,11 @@ export function scoreFuzzy(
   const scored = files
     .filter((f) => !taken.has(f))
     .map((f) => {
-      let score = base.get(f) ?? 0;
+      let score = base.get(f)!;
       const targets = new Set<VaultFile>();
       for (const raw of [...links.connects(f), ...links.body(f)]) {
         const t = byKey.get(cleanRef(raw).toLowerCase());
-        if (t && t !== f && (base.get(t) ?? 0) > 0) targets.add(t);
+        if (t && t !== f && base.get(t)! > 0) targets.add(t);
       }
       if (targets.size >= 2) score += targets.size * HUB_BONUS_PER_LINK;
       return { file: f, score };
@@ -616,7 +608,7 @@ function countOccurrences(haystack: string, needle: string): number {
 /* ---------------- excerpt ----------------
  * Facts line (frontmatter; which keys: see facts.ts) + relation lines,
  * then the note body (see noteBody), cut to the budget. */
-export function makeHomelabExcerpt(
+function makeHomelabExcerpt(
   file: VaultFile,
   cfg: HomelabConfig,
   budget: number,
@@ -746,7 +738,7 @@ export async function recall(
       excerpt,
     });
   }
-  return { notes, skipped: [...new Set(skipped)], vault: "ok" };
+  return { notes, skipped, vault: "ok" };
 }
 
 /* ---------------- the context block ----------------
