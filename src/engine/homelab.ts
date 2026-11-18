@@ -16,6 +16,7 @@ export interface HomelabConfig {
   snippetMaxChars: number;
   totalMaxChars: number;
   permanentFolder: string;    // where promote writes zettels (vault-relative)
+  inboxFolder: string;        // where recall writes capture notes (vault-relative)
 }
 
 export const HOMELAB_DEFAULTS: HomelabConfig = {
@@ -29,6 +30,7 @@ export const HOMELAB_DEFAULTS: HomelabConfig = {
   snippetMaxChars: 1400,
   totalMaxChars: 6000,
   permanentFolder: "Zettels",
+  inboxFolder: "00 - Inbox",
 };
 
 /** A backup older than this (days) raises a warning on guests. */

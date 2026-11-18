@@ -1,6 +1,6 @@
 {
   "name": "lm-recall",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "LM Studio plugin that adds relevant notes from your markdown / Zettelkasten vault to each chat message.",
   "repository": {
     "type": "git",

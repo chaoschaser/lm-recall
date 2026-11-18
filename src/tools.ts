@@ -8,11 +8,11 @@
 //
 
 import { rawFunctionTool, type ToolsProvider, type ToolsProviderController } from "@lmstudio/sdk";
-import { captureNote, promoteNote, INBOX_FOLDER, type CaptureResult } from "./engine/capture";
+import { captureNote, promoteNote, type CaptureResult } from "./engine/capture";
 import type { HomelabConfig } from "./engine/homelab";
 
 const RECALL_DESCRIPTION =
-  `Save a short note to the user's vault inbox (${INBOX_FOLDER}). Only use this when the user asks to ` +
+  "Save a short note to the user's vault inbox. Only use this when the user asks to " +
   "save, remember, note or capture something. Write it from what the user said; do not add facts. " +
   "Before calling, show the user the title and text you will save.";
 

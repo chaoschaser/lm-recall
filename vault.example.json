@@ -9,5 +9,6 @@
   "maxFuzzyNotes": 2,
   "snippetMaxChars": 1400,
   "totalMaxChars": 6000,
-  "permanentFolder": "Zettels"
+  "permanentFolder": "Zettels",
+  "inboxFolder": "00 - Inbox"
 }

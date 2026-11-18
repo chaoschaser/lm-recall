@@ -1,8 +1,8 @@
 //
 // The plugin's settings in LM Studio, and how they are read back.
 //
-//   - global (one value for every chat): where the vault is, and which
-//     sections of a note are quoted first
+//   - global (one value for every chat): where the vault is, its inbox and
+//     promoted-notes folders, and which sections of a note are quoted first
 //   - per chat: how much is added to a message
 //
 // Defaults mirror HOMELAB_DEFAULTS on purpose: a field left at its default
@@ -31,6 +31,16 @@ export const globalConfigSchematics = createConfigSchematics()
       displayName: "Folder for promoted notes",
       subtitle: "Folder inside the vault where promote saves permanent notes. Leave empty for Zettels (or vault.json).",
       placeholder: "Zettels",
+    },
+    "",
+  )
+  .field(
+    "inboxFolder",
+    "string",
+    {
+      displayName: "Inbox folder",
+      subtitle: "Folder inside the vault where recall saves new notes. Leave empty for 00 - Inbox (or vault.json).",
+      placeholder: "00 - Inbox",
     },
     "",
   )
@@ -115,6 +125,7 @@ export function readSettings(ctl: Pick<BaseController, "getPluginConfig" | "getG
     const global = ctl.getGlobalPluginConfig(globalConfigSchematics);
     out.vaultPath = global.get("vaultPath");
     out.permanentFolder = global.get("permanentFolder");
+    out.inboxFolder = global.get("inboxFolder");
     out.userSectionHeadings = global.get("userSectionHeadings");
   });
   read(() => {

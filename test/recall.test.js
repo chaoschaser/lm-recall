@@ -392,7 +392,7 @@ const { applySettings } = require("../dist/engine/settings.js");
 const BASE = { ...HOMELAB_DEFAULTS, vaultPath: "/from/vault-json", maxHopNotes: 5, userSectionHeadings: ["Howto"] };
 // What LM Studio returns when the user has touched nothing.
 const UNTOUCHED = {
-  vaultPath: "", userSectionHeadings: ["Notes", "Runbook"],
+  vaultPath: "", permanentFolder: "", inboxFolder: "", userSectionHeadings: ["Notes", "Runbook"],
   maxEntities: 3, maxHopNotes: 3, maxFuzzyNotes: 2, totalMaxChars: 6000,
 };
 
@@ -439,7 +439,7 @@ test("settings: the preprocessor asks for the config on every message, with the 
 
 test("settings: the settings pages build and read back through the controller", () => {
   const { readSettings, configSchematics, globalConfigSchematics } = require("../dist/settings.js");
-  const values = { vaultPath: "/v", permanentFolder: "Z", userSectionHeadings: ["A"], maxEntities: 1, maxHopNotes: 2, maxFuzzyNotes: 0, totalMaxChars: 900 };
+  const values = { vaultPath: "/v", permanentFolder: "Z", inboxFolder: "I", userSectionHeadings: ["A"], maxEntities: 1, maxHopNotes: 2, maxFuzzyNotes: 0, totalMaxChars: 900 };
   const parsed = { get: (k) => values[k] };
   const ctl = {
     getGlobalPluginConfig: (s) => { assert.equal(s, globalConfigSchematics); return parsed; },
@@ -723,6 +723,60 @@ test("tools: recall and promote are offered to the model and use the current set
 test("settings: the permanent folder setting wins when set", () => {
   assert.equal(applySettings(BASE, { permanentFolder: " Notes " }).permanentFolder, "Notes");
   assert.equal(applySettings(BASE, { permanentFolder: "" }).permanentFolder, "Zettels");
+});
+
+test("settings: the inbox folder setting wins when set", () => {
+  assert.equal(applySettings(BASE, { inboxFolder: " Fleeting " }).inboxFolder, "Fleeting");
+  assert.equal(applySettings(BASE, { inboxFolder: "" }).inboxFolder, "00 - Inbox");
+  assert.equal(applySettings({ ...BASE, inboxFolder: "From json" }, { inboxFolder: "" }).inboxFolder, "From json");
+});
+
+test("inbox folder: recall and promote use the configured inbox, never a second 00 - Inbox", async () => {
+  const vault = scratchVault();
+  try {
+    const cfg = cfgFor(vault, { inboxFolder: "Notes/Fleeting" });
+    const r = await captureNote(cfg, CAPTURE, NOW);
+    assert.equal(r.ok, true);
+    assert.equal(r.relPath, "Notes/Fleeting/202611171952 Mediaserver transcoding fix.md");
+    assert.ok(!fs.existsSync(path.join(vault, INBOX_FOLDER)), "no default inbox created");
+    // A note in the old default folder is not an inbox note any more.
+    const p = await promoteNote(cfg, { note: CAPTURE.title }, LATER);
+    assert.equal(p.ok, true, p.message);
+    assert.equal(p.relPath, "Zettels/202611172005 Mediaserver transcoding fix.md");
+    assert.ok(!fs.existsSync(path.join(vault, r.relPath)), "inbox note moved to .trash");
+    // Matching ignores case, as Windows and macOS do.
+    await captureNote(cfg, { ...CAPTURE, title: "Second" }, NOW);
+    const q = await promoteNote(cfgFor(vault, { inboxFolder: "notes/fleeting" }), { note: "Second" }, LATER);
+    assert.equal(q.ok, true, q.message);
+  } finally {
+    fs.rmSync(vault, { recursive: true });
+  }
+});
+
+test("inbox folder: must stay inside the vault and must not overlap the permanent folder", async () => {
+  const { foldersOverlap } = require("../dist/engine/capture.js");
+  assert.equal(foldersOverlap("Inbox", "inbox"), true);
+  assert.equal(foldersOverlap("Notes", "Notes/Inbox"), true);
+  assert.equal(foldersOverlap("Notes/Inbox", "Notes"), true);
+  assert.equal(foldersOverlap("Inbox", "Inbox2"), false);
+  const vault = scratchVault();
+  try {
+    const before = listFiles(vault);
+    for (const extra of [
+      { inboxFolder: "../out" }, { inboxFolder: ".hidden" }, { inboxFolder: "/etc" },
+      { inboxFolder: "zettels" }, { inboxFolder: "Zettels/Inbox" }, { permanentFolder: "00 - Inbox/Done" },
+    ]) {
+      const r = await captureNote(cfgFor(vault, extra), CAPTURE, NOW);
+      assert.equal(r.ok, false, JSON.stringify(extra));
+      assert.ok(r.message.includes(CAPTURE.what_happened), "the note is returned so nothing is lost");
+      assert.ok(!r.message.includes(vault), "no absolute path");
+      const p = await promoteNote(cfgFor(vault, extra), { note: CAPTURE.title }, LATER);
+      assert.equal(p.ok, false, JSON.stringify(extra));
+    }
+    assert.deepEqual(listFiles(vault), before, "nothing written");
+  } finally {
+    fs.rmSync(vault, { recursive: true });
+  }
 });
 
 test("promote: tags and summary become frontmatter; the zettel is still the user's", async () => {

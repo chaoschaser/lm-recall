@@ -53,7 +53,7 @@ A note is added again when:
 
 lm-recall gives the model two tools. Enable the plugin's tools in the chat to use them.
 
-**`recall`**: say "save this", "remember that…" or "note that…". The model writes a short note into `00 - Inbox/` in your vault, named `YYYYMMDDHHmm <title>.md`:
+**`recall`**: say "save this", "remember that…" or "note that…". The model writes a short note into `00 - Inbox/` in your vault (or the inbox folder in the settings), named `YYYYMMDDHHmm <title>.md`:
 
 ```markdown
 ---
@@ -79,9 +79,15 @@ Without it every stream transcodes on the CPU.
 
 **`promote`**: say "promote the Mediaserver transcoding fix note". The inbox note becomes a permanent note in `Zettels/` (or the folder in the settings), with `## The idea`, `## Why it matters`, `## Connected to` and `## Source` (when and for which project it was captured). The model can also add `tags` (a few lower-case topic words) and a one-sentence `summary` as frontmatter: Obsidian's tag pane groups notes by tag, and lm-recall shows the summary first and uses both in keyword search. You see them in the approval prompt before anything is saved. The permanent note has no `managed_by`: it is yours, and lm-recall never changes it. Once the permanent note is saved, the inbox note is moved to the vault's `.trash/` folder, the same place Obsidian's own delete uses, so you can still recover it.
 
+How much the permanent note adds is up to the model. lm-recall adds no facts of its own. A capable model may fill in tags, a summary and the idea in its own words without being asked; a small one may only pass the note's name, giving you the inbox note's text under the new headings. To get more, say what you want when you promote:
+
+> promote the Mediaserver transcoding fix note, add tags and a summary, rewrite the idea in a sentence or two, and link it to ct-101
+
+Anything you leave out falls back to the inbox note: its title, its *What happened* as the idea, its *Why it matters*, and its links. Links you ask for are only kept if a note by that name exists.
+
 What the tools will and won't do:
 
-- They only create new files, in `00 - Inbox/` and the promoted-notes folder. An existing filename is refused, never overwritten.
+- They only create new files, in the inbox folder and the promoted-notes folder. An existing filename is refused, never overwritten.
 - The only existing file they touch is an inbox note lm-recall created, moved unchanged to `.trash/` after it is promoted. Nothing is deleted outright, and nothing in `.trash/` is overwritten.
 - Links are only written to notes that exist. Anything else is left out and the model tells you; `Connected to` says `(none identified)` when there is nothing to link.
 - If a save fails, the model shows you the whole note so nothing is lost.
@@ -232,6 +238,7 @@ The usual place is the plugin's settings in LM Studio:
 | Setting | Where | What it does |
 |---|---|---|
 | Vault folder | plugin settings (all chats) | Full path to the folder to read. `~/...` works. |
+| Inbox folder | plugin settings (all chats) | Same as `inboxFolder` below |
 | Folder for promoted notes | plugin settings (all chats) | Same as `permanentFolder` below |
 | Sections quoted first | plugin settings (all chats) | Same as `userSectionHeadings` below |
 | Named notes per message | per chat | Same as `maxEntities` |
@@ -254,7 +261,10 @@ Every value can also come from `vault.json` in the plugin folder (gitignored, so
 | `maxFuzzyNotes` | `2` | Notes added by keyword search |
 | `snippetMaxChars` | `1400` | Longest excerpt per note |
 | `totalMaxChars` | `6000` | Total size of the added block |
-| `permanentFolder` | `Zettels` | Folder inside the vault where `promote` saves notes. Must stay inside the vault. |
+| `inboxFolder` | `00 - Inbox` | Folder inside the vault where `recall` saves notes. Use your vault's existing inbox, so you don't end up with two. |
+| `permanentFolder` | `Zettels` | Folder inside the vault where `promote` saves notes. |
+
+Both folders must stay inside the vault and must be separate: not the same folder, and neither inside the other. If they aren't, `recall` and `promote` save nothing and say why; `recall` still shows you the note.
 
 A missing `vault.json` is fine. A broken one prints a warning and the defaults are used.
 

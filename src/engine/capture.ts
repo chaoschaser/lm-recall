@@ -2,8 +2,9 @@
 // Capture and promote (Phase 3c): the only code in lm-recall that writes.
 //
 // What it may write, and nothing else:
-//   - a new inbox note in 00 - Inbox/            (recall)
-//   - a new permanent zettel in cfg.permanentFolder (promote)
+//   - a new inbox note in cfg.inboxFolder           (recall; default 00 - Inbox)
+//   - a new permanent zettel in cfg.permanentFolder (promote; default Zettels)
+//   The two folders must stay inside the vault and must not overlap.
 //   - after a successful promote, it moves the inbox note it promoted (one
 //     of its own: managed_by: lm-recall) into the vault's .trash/ folder
 //
@@ -23,9 +24,10 @@
 import { promises as fs } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { extractWikiLinks, walkVault, type VaultFile } from "./core";
-import { findNote, stemOf, titleOf, type HomelabConfig } from "./homelab";
+import { findNote, stemOf, titleOf, HOMELAB_DEFAULTS, type HomelabConfig } from "./homelab";
 
-export const INBOX_FOLDER = "00 - Inbox";
+/** The default inbox folder; the one in use is cfg.inboxFolder. */
+export const INBOX_FOLDER = HOMELAB_DEFAULTS.inboxFolder;
 const MANAGED_BY = "lm-recall";
 const NONE_IDENTIFIED = "(none identified)";
 
@@ -75,8 +77,9 @@ export function cleanTitle(raw: unknown): string {
 }
 
 /**
- * The permanent folder as a vault-relative path, or null if it would leave
- * the vault (absolute, "..", drive letter) or is empty.
+ * A configured folder (inbox or permanent) as a vault-relative path, or null
+ * if it would leave the vault (absolute, "..", drive letter), is hidden, or
+ * is empty.
  */
 export function safeFolder(raw: string): string | null {
   const parts = raw.replace(/\\/g, "/").split("/").map((p) => p.trim()).filter((p) => p && p !== ".");
@@ -85,6 +88,26 @@ export function safeFolder(raw: string): string | null {
   }
   return parts.join("/");
 }
+
+/**
+ * True when two vault-relative folders are the same or one is inside the
+ * other. Ignores case: Windows and macOS treat "Inbox" and "inbox" as one
+ * folder.
+ */
+export function foldersOverlap(a: string, b: string): boolean {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  return x === y || x.startsWith(`${y}/`) || y.startsWith(`${x}/`);
+}
+
+/** The inbox folder in use, or null if the setting would leave the vault. */
+function inboxOf(cfg: HomelabConfig): string | null {
+  return safeFolder(cfg.inboxFolder ?? INBOX_FOLDER);
+}
+
+const FOLDERS_ERROR =
+  "the inbox and permanent folders in lm-recall's settings must be two separate folders inside the vault, " +
+  "neither inside the other.";
 
 /** Text of a `## heading` section in a note body, or "". */
 function section(body: string, heading: string): string {
@@ -250,12 +273,17 @@ export async function captureNote(
     return { ok: false, message: `Nothing was saved: ${missing.join(", ")} missing. Ask the user for it, then try again.` };
   }
 
+  const inbox = inboxOf(cfg);
+  const permanent = safeFolder(cfg.permanentFolder);
   const files = await readVault(cfg);
   const { links, unknown } = files ? resolveLinks(strList(params.links), files) : { links: [], unknown: [] };
-  const relPath = `${INBOX_FOLDER}/${timestampId(now)} ${title}.md`;
+  const relPath = `${inbox}/${timestampId(now)} ${title}.md`;
   const content = inboxNoteText({
     title, date: isoDate(now), project: str(params.project), whatHappened, whyItMatters, links,
   });
+  if (!inbox || (permanent && foldersOverlap(inbox, permanent))) {
+    return { ok: false, message: `Nothing was saved: ${FOLDERS_ERROR}\n\nThe note, so nothing is lost:\n\n${content}` };
+  }
   if (!files) return { ok: false, message: `${VAULT_ERROR}\n\nThe note, so nothing is lost:\n\n${content}` };
 
   let outcome: CreateOutcome;
@@ -331,8 +359,9 @@ export function zettelText(p: {
 }
 
 /** The inbox note `ref` names: by filename, title or id. */
-function findInboxNote(ref: string, files: VaultFile[]): { note?: VaultFile; error?: string } {
-  const inbox = files.filter((f) => f.relPath.startsWith(`${INBOX_FOLDER}/`));
+function findInboxNote(ref: string, files: VaultFile[], folder: string): { note?: VaultFile; error?: string } {
+  const prefix = `${folder.toLowerCase()}/`;
+  const inbox = files.filter((f) => f.relPath.replace(/\\/g, "/").toLowerCase().startsWith(prefix));
   const want = ref.replace(/\.md$/i, "").replace(/^\[\[|\]\]$/g, "").trim().toLowerCase();
   const matches = inbox.filter((f) =>
     stemOf(f).toLowerCase() === want ||
@@ -341,7 +370,7 @@ function findInboxNote(ref: string, files: VaultFile[]): { note?: VaultFile; err
   if (!matches.length) {
     const anywhere = findNote(ref, files);
     if (anywhere && !inbox.includes(anywhere)) {
-      return { error: `"${ref}" is not an inbox note. Only notes saved with recall (in ${INBOX_FOLDER}) can be promoted.` };
+      return { error: `"${ref}" is not an inbox note. Only notes saved with recall (in ${folder}) can be promoted.` };
     }
     return { error: `No inbox note called "${ref}" was found.` };
   }
@@ -365,13 +394,14 @@ export async function promoteNote(
   const ref = str(params.note);
   if (!ref) return { ok: false, message: "Nothing was promoted: say which inbox note to promote." };
   const folder = safeFolder(cfg.permanentFolder);
-  if (!folder || folder === INBOX_FOLDER) {
-    return { ok: false, message: "Nothing was promoted: the permanent folder in lm-recall's settings must be a folder inside the vault, other than the inbox." };
+  const inbox = inboxOf(cfg);
+  if (!folder || !inbox || foldersOverlap(folder, inbox)) {
+    return { ok: false, message: `Nothing was promoted: ${FOLDERS_ERROR}` };
   }
 
   const files = await readVault(cfg);
   if (!files) return { ok: false, message: VAULT_ERROR };
-  const { note, error } = findInboxNote(ref, files);
+  const { note, error } = findInboxNote(ref, files, inbox);
   if (!note) return { ok: false, message: `Nothing was promoted: ${error}` };
   if (note.fm.managed_by !== MANAGED_BY) {
     return { ok: false, message: `Nothing was promoted: "${stemOf(note)}" was not created by lm-recall, so lm-recall won't touch it.` };
@@ -419,8 +449,8 @@ export async function promoteNote(
     console.error("[lm-recall] could not move inbox note to .trash:", err);
   }
   const skipped = unknown.length ? ` Left out as links because no such note exists: ${unknown.join(", ")}.` : "";
-  const inbox = moved
+  const trashNote = moved
     ? ` The inbox note was moved to the vault's ${TRASH_FOLDER} folder (recoverable from there).`
     : " The inbox note could not be moved to .trash and is still in the inbox; the user can delete it in Obsidian.";
-  return { ok: true, relPath, message: `Promoted to ${relPath}.${inbox}${skipped}` };
+  return { ok: true, relPath, message: `Promoted to ${relPath}.${trashNote}${skipped}` };
 }
